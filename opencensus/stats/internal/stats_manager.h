@@ -16,6 +16,8 @@
 #define OPENCENSUS_STATS_INTERNAL_STATS_MANAGER_H_
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
@@ -67,6 +69,10 @@ class StatsManager final {
 
    private:
     const ViewDescriptor descriptor_;
+    // A sorted mapping from elements of descriptor_.columns() to their index in
+    // descriptor_.columns(). The string_views point to strings in
+    // descriptor_.columns().
+    const std::vector<std::pair<absl::string_view, int>> column_indexes_;
 
     absl::Mutex* const mu_;  // Not owned.
     // The number of View objects backed by this ViewInformation, for
@@ -84,11 +90,9 @@ class StatsManager final {
   static StatsManager* Get();
 
   // Records 'measurements' against all views tracking each measure.
-  void Record(
-      std::initializer_list<Measurement> measurements,
-      std::initializer_list<std::pair<absl::string_view, absl::string_view>>
-          tags,
-      absl::Time now) LOCKS_EXCLUDED(mu_);
+  void Record(std::initializer_list<Measurement> measurements,
+              std::vector<std::pair<absl::string_view, absl::string_view>> tags,
+              absl::Time now) LOCKS_EXCLUDED(mu_);
 
   // Adds a measure--this is necessary for views to be added under that measure.
   template <typename MeasureT>

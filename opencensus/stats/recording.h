@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <initializer_list>
+#include <vector>
 
 #include "absl/strings/string_view.h"
 #include "opencensus/stats/measure.h"
@@ -35,8 +36,7 @@ namespace stats {
 // static_cast to double or int64_t if necessary).
 void Record(
     std::initializer_list<Measurement> measurements,
-    std::initializer_list<std::pair<absl::string_view, absl::string_view>>
-        tags = {});
+    std::vector<std::pair<absl::string_view, absl::string_view>> tags = {});
 
 }  // namespace stats
 }  // namespace opencensus

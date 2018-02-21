@@ -14,7 +14,10 @@
 
 #include "opencensus/stats/internal/stats_manager.h"
 
+#include <algorithm>
 #include <iostream>
+#include <utility>
+#include <vector>
 
 #include "absl/base/macros.h"
 #include "absl/time/time.h"
@@ -24,14 +27,29 @@ namespace stats {
 
 // TODO: See if it is possible to replace AssertHeld() with function
 // annotations.
-// TODO: Optimize selecting/sorting tag values for each view.
 
 // ========================================================================== //
 // StatsManager::ViewInformation
 
+std::vector<std::pair<absl::string_view, int>> MakeColumnIndexesVector(
+    const std::vector<std::string>& columns) {
+  std::vector<std::pair<absl::string_view, int>> column_indexes;
+  column_indexes.reserve(columns.size());
+  for (int i = 0; i < columns.size(); ++i) {
+    column_indexes.emplace_back(absl::string_view(columns[i]), i);
+  }
+  // Column names are unique, so the default comparator (compares on 'first'
+  // then 'second' is acceptable.
+  std::sort(column_indexes.begin(), column_indexes.end());
+  return column_indexes;
+}
+
 StatsManager::ViewInformation::ViewInformation(const ViewDescriptor& descriptor,
                                                absl::Mutex* mu)
-    : descriptor_(descriptor), mu_(mu), data_(absl::Now(), descriptor) {}
+    : descriptor_(descriptor),
+      column_indexes_(MakeColumnIndexesVector(descriptor_.columns())),
+      mu_(mu),
+      data_(absl::Now(), descriptor) {}
 
 bool StatsManager::ViewInformation::Matches(
     const ViewDescriptor& descriptor) const {
@@ -60,17 +78,31 @@ void StatsManager::ViewInformation::Record(
     absl::Span<const std::pair<absl::string_view, absl::string_view>> tags,
     absl::Time now) {
   mu_->AssertHeld();
-  std::vector<std::string> tag_values(descriptor_.columns().size());
-  for (int i = 0; i < tag_values.size(); ++i) {
-    const std::string& column = descriptor_.columns()[i];
-    for (const auto& tag : tags) {
-      if (tag.first == column) {
-        tag_values[i] = std::string(tag.second);
-        break;
-      }
+  std::vector<std::string> tag_values(column_indexes_.size());
+  // Merge the view columns and the recorded tags:
+  int column_index = 0;
+  int tag_index = 0;
+  while (true) {
+    if (column_index >= column_indexes_.size() || tag_index >= tags.size()) {
+      break;
+    }
+    const auto compare =
+        column_indexes_[column_index].first.compare(tags[tag_index].first);
+    if (compare < 0) {
+      // A recorded tag is not in the view.
+      ++tag_index;
+    } else if (compare > 0) {
+      // A view column has no corresponding tag.
+      ++column_index;
+    } else {
+      // The tag key matches; assign it to the appropriate index in tag_values.
+      tag_values[column_indexes_[column_index].second] =
+          std::string(tags[tag_index].second);
+      ++column_index;
+      ++tag_index;
     }
   }
-  data_.Add(value, tag_values, now);
+  data_.Add(value, std::move(tag_values), now);
 }
 
 ViewDataImpl StatsManager::ViewInformation::GetData() const {
@@ -134,8 +166,9 @@ StatsManager* StatsManager::Get() {
 
 void StatsManager::Record(
     std::initializer_list<Measurement> measurements,
-    std::initializer_list<std::pair<absl::string_view, absl::string_view>> tags,
+    std::vector<std::pair<absl::string_view, absl::string_view>> tags,
     absl::Time now) {
+  std::sort(tags.begin(), tags.end());
   absl::MutexLock l(&mu_);
   for (const auto& measurement : measurements) {
     if (MeasureRegistryImpl::IdValid(measurement.id_)) {
