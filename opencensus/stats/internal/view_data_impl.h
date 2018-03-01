@@ -27,6 +27,7 @@
 #include "opencensus/stats/aggregation.h"
 #include "opencensus/stats/distribution.h"
 #include "opencensus/stats/internal/aggregation_window.h"
+#include "opencensus/stats/internal/measure_data.h"
 #include "opencensus/stats/view_descriptor.h"
 
 namespace opencensus {
@@ -104,7 +105,7 @@ class ViewDataImpl {
   // according to the order of keys in the ViewDescriptor.
   // TODO: Change to take Span<string_view> when heterogenous lookup is
   // supported.
-  void Add(double value, const std::vector<std::string>& tag_values,
+  void Add(const MeasureData& data, const std::vector<std::string>& tag_values,
            absl::Time now);
 
  private:

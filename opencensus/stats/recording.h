@@ -20,6 +20,7 @@
 
 #include "absl/strings/string_view.h"
 #include "opencensus/stats/measure.h"
+#include "opencensus/stats/tag_set.h"
 
 namespace opencensus {
 namespace stats {
@@ -33,10 +34,8 @@ namespace stats {
 // integral values against MeasureInts, to prevent silent loss of precision. If
 // a record call fails to compile, ensure that all types match (using
 // static_cast to double or int64_t if necessary).
-void Record(
-    std::initializer_list<Measurement> measurements,
-    std::initializer_list<std::pair<absl::string_view, absl::string_view>>
-        tags = {});
+void Record(std::initializer_list<Measurement> measurements,
+            TagSet tags = TagSet({}));
 
 }  // namespace stats
 }  // namespace opencensus

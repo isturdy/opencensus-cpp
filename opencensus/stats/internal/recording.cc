@@ -15,17 +15,15 @@
 #include "opencensus/stats/recording.h"
 
 #include "absl/time/clock.h"
-#include "opencensus/stats/internal/stats_manager.h"
+#include "opencensus/stats/internal/delta_producer.h"
 #include "opencensus/stats/measure.h"
+#include "opencensus/stats/tag_set.h"
 
 namespace opencensus {
 namespace stats {
 
-void Record(
-    std::initializer_list<Measurement> measurements,
-    std::initializer_list<std::pair<absl::string_view, absl::string_view>>
-        tags) {
-  StatsManager::Get()->Record(measurements, tags, absl::Now());
+void Record(std::initializer_list<Measurement> measurements, TagSet tags) {
+  DeltaProducer::Get()->Record(measurements, tags);
 }
 
 }  // namespace stats

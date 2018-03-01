@@ -18,6 +18,10 @@
 
 #include "absl/base/macros.h"
 #include "absl/time/time.h"
+#include "opencensus/stats/bucket_boundaries.h"
+#include "opencensus/stats/internal/delta_producer.h"
+#include "opencensus/stats/internal/measure_data.h"
+#include "opencensus/stats/tag_set.h"
 
 namespace opencensus {
 namespace stats {
@@ -55,15 +59,15 @@ int StatsManager::ViewInformation::RemoveConsumer() {
   return --num_consumers_;
 }
 
-void StatsManager::ViewInformation::Record(
-    double value,
-    absl::Span<const std::pair<absl::string_view, absl::string_view>> tags,
-    absl::Time now) {
+void StatsManager::ViewInformation::Record(const MeasureData& data,
+                                           const BucketBoundaries& boundaries,
+                                           const TagSet& tag_set,
+                                           absl::Time now) {
   mu_->AssertHeld();
   std::vector<std::string> tag_values(descriptor_.columns().size());
   for (int i = 0; i < tag_values.size(); ++i) {
     const std::string& column = descriptor_.columns()[i];
-    for (const auto& tag : tags) {
+    for (const auto& tag : tag_set.tags()) {
       if (tag.first == column) {
         tag_values[i] = std::string(tag.second);
         break;
@@ -86,12 +90,11 @@ ViewDataImpl StatsManager::ViewInformation::GetData() const {
 // // StatsManager::MeasureInformation
 
 void StatsManager::MeasureInformation::Record(
-    double value,
-    absl::Span<const std::pair<absl::string_view, absl::string_view>> tags,
-    absl::Time now) {
+    const MeasureData& data, const BucketBoundaries& boundaries,
+    const TagSet& tag_set, absl::Time now) {
   mu_->AssertHeld();
   for (auto& view : views_) {
-    view->Record(value, tags, now);
+    view->Record(data, boundaries, tag_set, now);
   }
 }
 
@@ -133,8 +136,8 @@ StatsManager* StatsManager::Get() {
 }
 
 void StatsManager::Record(
-    std::initializer_list<Measurement> measurements,
-    std::initializer_list<std::pair<absl::string_view, absl::string_view>> tags,
+    int measure_index, double value,
+    absl::Span<const std::pair<absl::string_view, absl::string_view>> tags,
     absl::Time now) {
   absl::MutexLock l(&mu_);
   for (const auto& measurement : measurements) {
@@ -173,6 +176,10 @@ StatsManager::ViewInformation* StatsManager::AddConsumer(
     return nullptr;
   }
   const uint64_t index = MeasureRegistryImpl::IdToIndex(descriptor.measure_id_);
+  if (descriptor.aggregation().type() == Aggregation::Type::kDistribution) {
+    DeltaProducer::Get()->AddBoundaries(
+        index, descriptor.aggregation().bucket_boundaries());
+  }
   return measures_[index].AddConsumer(descriptor);
 }
 
