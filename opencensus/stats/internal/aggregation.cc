@@ -34,6 +34,7 @@ std::string Aggregation::DebugString() const {
                           bucket_boundaries_.DebugString());
     }
   }
+  assert(false);
 }
 
 }  // namespace stats
