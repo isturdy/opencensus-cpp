@@ -22,8 +22,7 @@ FOR /F usebackq %%T IN (`bazel query "kind(test, //...)  except attr('tags', 'ma
 )
 
 REM TODO: Remove --output_user_root after https://github.com/bazelbuild/bazel/issues/4149 is fixed.
-echo TODO: Make all tests pass on Windows.
-REM bazel --output_user_root=c:/t/ test --test_output=errors %TESTS%
+bazel --output_user_root=c:/t/ test --test_output=errors %TESTS%
 
 IF %ERRORLEVEL% NEQ 0 EXIT /b %ERRORLEVEL%
 EXIT /b 0

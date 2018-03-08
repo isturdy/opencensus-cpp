@@ -33,16 +33,17 @@ load(
 
 DEFAULT_COPTS = select({
     "//opencensus:llvm_compiler": LLVM_FLAGS,
-    # Disable "not all control paths return a value"; functions that return
-    # out of a switch on an enum cause build errors otherwise.
-    "//opencensus:windows": MSVC_FLAGS + ["/wd4715"],
+    # 2220 disables "no object file generated", which which otherwise causes
+    # errors in generated code.
+    # 4715 disables "not all control paths return a value"; functions that
+    # return out of a switch on an enum cause build errors otherwise.
+    "//opencensus:windows": MSVC_FLAGS + ["/wd4146", "/wd4715"],
     "//conditions:default": GCC_FLAGS,
 })
 
 TEST_COPTS = DEFAULT_COPTS + select({
     "//opencensus:llvm_compiler": LLVM_TEST_FLAGS,
-    # Disable "not all control paths return a value"; functions that return
-    # out of a switch on an enum cause build errors otherwise.    
-    "//opencensus:windows": MSVC_TEST_FLAGS + ["/wd4715"],
+    # See explanations of these options under DEFAULT_COPTS.
+    "//opencensus:windows": MSVC_TEST_FLAGS + ["/wd4146", "/wd4715"],
     "//conditions:default": GCC_TEST_FLAGS,
 })
