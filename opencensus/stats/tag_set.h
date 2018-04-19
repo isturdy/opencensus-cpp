@@ -29,7 +29,7 @@ namespace stats {
 // TagSet represents a set of key-value tags, and provides efficient equality
 // and hash operations. A TagSet is expensive to construct, and should be shared
 // between uses where possible.
-// TagSet is immutable.
+// TagSet is thread-compatible.
 class TagSet final {
  public:
   // Both constructors are not explicit so that Record({}, {{"k", "v"}}) works.
@@ -39,6 +39,10 @@ class TagSet final {
   // This constructor is needed so that callers can dynamically construct
   // tagsets. It takes the argument by value to allow it to be moved.
   TagSet(std::vector<std::pair<TagKey, std::string>> tags);
+
+  // Sets or adds tags in the present TagSet.
+  void SetTags(
+      std::initializer_list<std::pair<TagKey, absl::string_view>> tags);
 
   // Accesses the tags sorted by key (in an implementation-defined, not
   // lexicographic, order).

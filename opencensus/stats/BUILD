@@ -271,3 +271,18 @@ cc_binary(
         "@com_google_benchmark//:benchmark",
     ],
 )
+
+cc_binary(
+    name = "tagging_benchmark",
+    testonly = 1,
+    srcs = ["internal/tagging_benchmark.cc"],
+    copts = TEST_COPTS,
+    linkopts = ["-pthread"],  # Required for absl/synchronization bits.
+    linkstatic = 1,
+    deps = [
+        ":core",
+        "//opencensus/common/internal:random_lib",
+        "@com_google_absl//absl/strings",
+        "@com_google_benchmark//:benchmark",
+    ],
+)
